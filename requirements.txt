@@ -1,0 +1,13 @@
+# Core dependencies
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# Facial landmarks.
+# 0.10.14 is pinned because it still ships the classic Face Mesh API used here.
+# Newer versions also work via the Tasks API fallback in face_mesh.py, but then
+# you must place face_landmarker.task inside assets/ (see README).
+mediapipe==0.10.14
+
+# Optional: cross-platform audio alarm.
+# Not required - the project falls back to winsound / aplay / afplay / terminal bell.
+playsound==1.2.2

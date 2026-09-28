@@ -1,0 +1,18 @@
+__pycache__/
+*.py[cod]
+venv/
+venv312/
+.venv/
+env/
+.idea/
+.vscode/
+.DS_Store
+
+# Generated at runtime
+outputs/*.mp4
+outputs/*.avi
+outputs/*.csv
+!outputs/.gitkeep
+
+# Optional MediaPipe Tasks model
+assets/face_landmarker.task
