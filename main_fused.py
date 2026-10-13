@@ -90,6 +90,10 @@ def parse_args(argv=None):
                    help="seconds before audio evidence expires")
     p.add_argument("--audio-weight", type=float, default=0.30,
                    help="weight of audio in the fused score (0–1)")
+    p.add_argument("--serial-port", default=None,
+                   help="Serial port for Proteus/ECU bridge (e.g. COM1 or /dev/ttyUSB0)")
+    p.add_argument("--serial-baud", type=int, default=9600,
+                   help="Baud rate for serial bridge")
     p.add_argument("--no-fusion-overlay", action="store_true",
                    help="hide the fusion debug overlay")
     return p.parse_args(argv)
@@ -217,6 +221,20 @@ def main(argv=None):
 
     # ---- New: Fusion engine + CV adapter ----
     cv_adapter = CVAdapter()
+    # ---- Serial bridge (Proteus / Hardware ECU) ----
+    serial_conn = None
+    if args.serial_port:
+        try:
+            import serial
+            serial_conn = serial.Serial(args.serial_port, args.serial_baud, timeout=0.1)
+            print(f"[INFO] Serial ECU bridge connected on {args.serial_port} @ {args.serial_baud} baud")
+        except Exception as exc:
+            logging.warning("Could not open serial port %s: %s", args.serial_port, exc)
+            serial_conn = None
+
+    last_sent_state = None
+    last_serial_send = 0.0
+
     fusion_engine = FusionEngine(FusionConfig(
         audio_evidence_ttl=args.audio_ttl,
         audio_weight=args.audio_weight,
@@ -290,6 +308,17 @@ def main(argv=None):
             # ---- Step 5: NEW – fuse ----
             fused = fusion_engine.fuse(cv_evidence, audio_evidence)
 
+            # ---- Stream state to Proteus ECU over Serial ----
+            if serial_conn is not None:
+                now_s = time.time()
+                if fused.state.name != last_sent_state or (now_s - last_serial_send) >= 0.3:
+                    try:
+                        serial_conn.write(f"{fused.state.name}\n".encode())
+                        last_sent_state = fused.state.name
+                        last_serial_send = now_s
+                    except Exception as err:
+                        logging.debug("Serial write failed: %s", err)
+
             # ---- Step 6: NEW – draw fusion overlay ----
             if not args.no_fusion_overlay and not args.no_display:
                 draw_fusion_overlay(frame, fused, audio_evidence, cv_evidence)
@@ -317,6 +346,11 @@ def main(argv=None):
         print("\n[INFO] interrupted by user")
     finally:
         cap.release()
+        if serial_conn is not None:
+            try:
+                serial_conn.close()
+            except Exception:
+                pass
         if writer is not None:
             writer.release()
         detector.close()
