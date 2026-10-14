@@ -15,10 +15,8 @@ const int PIN_MOTOR  = 10; // Pin 14 on ATmega328P (Steering Wheel Haptic Motor)
 const int PIN_RELAY  = 13; // Pin 17 on ATmega328P (Hazard Light Flasher Relay)
 
 void setup() {
-  // Start Hardware Serial @ 9600 baud (Pin 30 RX, Pin 31 TX)
   Serial.begin(9600);
 
-  // Initialize 16x2 LCD
   lcd.begin(16, 2);
   lcd.clear();
   lcd.setCursor(0, 0);
@@ -26,7 +24,6 @@ void setup() {
   lcd.setCursor(0, 1);
   lcd.print("STATUS: ONLINE");
 
-  // Configure Actuator Outputs
   pinMode(PIN_GREEN, OUTPUT);
   pinMode(PIN_YELLOW, OUTPUT);
   pinMode(PIN_RED, OUTPUT);
@@ -47,21 +44,16 @@ void loop() {
   if (Serial.available() > 0) {
     String state = Serial.readStringUntil('
 ');
-    state.replace("", "");
-    state.replace("
-", "");
-    state.trim();
+    state.toUpperCase();
 
-    if (state.length() == 0) return;
+    // Use robust substring matching (immune to any Windows newline / whitespace)
+    if (state.indexOf("NORMAL") >= 0) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("DRIVER STATE:");
+      lcd.setCursor(0, 1);
+      lcd.print("NORMAL");
 
-    // Update in-cabin HUD
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("DRIVER STATE:");
-    lcd.setCursor(0, 1);
-    lcd.print(state);
-
-    if (state == "NORMAL") {
       digitalWrite(PIN_GREEN, HIGH);
       digitalWrite(PIN_YELLOW, LOW);
       digitalWrite(PIN_RED, LOW);
@@ -69,7 +61,13 @@ void loop() {
       digitalWrite(PIN_MOTOR, LOW);
       digitalWrite(PIN_RELAY, LOW);
     }
-    else if (state == "ATTENTION_DEGRADED") {
+    else if (state.indexOf("ATTENTION_DEGRADED") >= 0) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("DRIVER STATE:");
+      lcd.setCursor(0, 1);
+      lcd.print("DEGRADED");
+
       digitalWrite(PIN_GREEN, LOW);
       digitalWrite(PIN_YELLOW, HIGH);
       digitalWrite(PIN_RED, LOW);
@@ -77,7 +75,13 @@ void loop() {
       digitalWrite(PIN_MOTOR, LOW);
       digitalWrite(PIN_RELAY, LOW);
     }
-    else if (state == "DROWSY" || state == "DISTRACTED") {
+    else if (state.indexOf("DROWSY") >= 0) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("DRIVER STATE:");
+      lcd.setCursor(0, 1);
+      lcd.print("DROWSY");
+
       digitalWrite(PIN_GREEN, LOW);
       digitalWrite(PIN_YELLOW, LOW);
       digitalWrite(PIN_RED, HIGH);
@@ -85,12 +89,32 @@ void loop() {
       digitalWrite(PIN_MOTOR, HIGH);   // Haptic steering vibrator ON
       digitalWrite(PIN_RELAY, LOW);
     }
-    else if (state == "HIGH_RISK" || state == "ALERT") {
+    else if (state.indexOf("DISTRACTED") >= 0) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("DRIVER STATE:");
+      lcd.setCursor(0, 1);
+      lcd.print("DISTRACTED");
+
       digitalWrite(PIN_GREEN, LOW);
       digitalWrite(PIN_YELLOW, LOW);
       digitalWrite(PIN_RED, HIGH);
       digitalWrite(PIN_BUZZER, HIGH);
-      digitalWrite(PIN_MOTOR, HIGH);   // Full steering vibration
+      digitalWrite(PIN_MOTOR, HIGH);   // Steering vibrator ON
+      digitalWrite(PIN_RELAY, LOW);
+    }
+    else if (state.indexOf("ALERT") >= 0 || state.indexOf("HIGH_RISK") >= 0) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("DRIVER STATE:");
+      lcd.setCursor(0, 1);
+      lcd.print("CRITICAL ALERT!");
+
+      digitalWrite(PIN_GREEN, LOW);
+      digitalWrite(PIN_YELLOW, LOW);
+      digitalWrite(PIN_RED, HIGH);
+      digitalWrite(PIN_BUZZER, HIGH);
+      digitalWrite(PIN_MOTOR, HIGH);   // Continuous max vibration
       digitalWrite(PIN_RELAY, HIGH);  // Vehicle hazard lights ON
     }
   }
