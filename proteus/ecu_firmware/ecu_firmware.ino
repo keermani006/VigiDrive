@@ -1,121 +1,75 @@
 #include <LiquidCrystal.h>
 
-// --------------------------------------------------------------------------
-// VigiDrive Automotive Safety ECU Firmware (ATmega328P / Arduino)
-// --------------------------------------------------------------------------
-// LCD pin assignment: RS=12 (PB4), E=11 (PB3), D4=5 (PD5), D5=4 (PD4), D6=3 (PD3), D7=2 (PD2)
+// LCD pin assignment: RS=12, E=11, D4=5, D5=4, D6=3, D7=2
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
-// Output Actuator & Indicator Pins
-const int PIN_GREEN  = 6;  // Pin 10 on ATmega328P (Safe State)
-const int PIN_YELLOW = 7;  // Pin 11 on ATmega328P (Degraded State)
-const int PIN_RED    = 8;  // Pin 12 on ATmega328P (Critical State)
-const int PIN_BUZZER = 9;  // Pin 13 on ATmega328P (Acoustic Siren)
-const int PIN_MOTOR  = 10; // Pin 14 on ATmega328P (Steering Wheel Haptic Motor)
-const int PIN_RELAY  = 13; // Pin 17 on ATmega328P (Hazard Light Flasher Relay)
-
 void setup() {
-  Serial.begin(9600);
-
   lcd.begin(16, 2);
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("VigiDrive ECU");
-  lcd.setCursor(0, 1);
-  lcd.print("STATUS: ONLINE");
-
-  pinMode(PIN_GREEN, OUTPUT);
-  pinMode(PIN_YELLOW, OUTPUT);
-  pinMode(PIN_RED, OUTPUT);
-  pinMode(PIN_BUZZER, OUTPUT);
-  pinMode(PIN_MOTOR, OUTPUT);
-  pinMode(PIN_RELAY, OUTPUT);
-
-  // Initial State: Safe / Green LED
-  digitalWrite(PIN_GREEN, HIGH);
-  digitalWrite(PIN_YELLOW, LOW);
-  digitalWrite(PIN_RED, LOW);
-  digitalWrite(PIN_BUZZER, LOW);
-  digitalWrite(PIN_MOTOR, LOW);
-  digitalWrite(PIN_RELAY, LOW);
+  
+  // Set all candidate LED pins as outputs
+  for (int p = 5; p <= 14; p++) {
+    pinMode(p, OUTPUT);
+    digitalWrite(p, LOW);
+  }
 }
 
 void loop() {
-  if (Serial.available() > 0) {
-    String state = Serial.readStringUntil('
-');
-    state.toUpperCase();
+  // -------------------------------------------------------------
+  // STATE 1: NORMAL (Green LED ON) - 1.2s
+  // -------------------------------------------------------------
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("DRIVER STATE:");
+  lcd.setCursor(0, 1);
+  lcd.print("NORMAL");
 
-    // Use robust substring matching (immune to any Windows newline / whitespace)
-    if (state.indexOf("NORMAL") >= 0) {
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("DRIVER STATE:");
-      lcd.setCursor(0, 1);
-      lcd.print("NORMAL");
+  // Green ON (Pin 6 & Pin 8)
+  digitalWrite(6, HIGH); digitalWrite(8, HIGH);
+  digitalWrite(7, LOW);  digitalWrite(9, LOW);
+  digitalWrite(10, LOW); digitalWrite(12, LOW);
+  delay(1200);
 
-      digitalWrite(PIN_GREEN, HIGH);
-      digitalWrite(PIN_YELLOW, LOW);
-      digitalWrite(PIN_RED, LOW);
-      digitalWrite(PIN_BUZZER, LOW);
-      digitalWrite(PIN_MOTOR, LOW);
-      digitalWrite(PIN_RELAY, LOW);
-    }
-    else if (state.indexOf("ATTENTION_DEGRADED") >= 0) {
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("DRIVER STATE:");
-      lcd.setCursor(0, 1);
-      lcd.print("DEGRADED");
+  // -------------------------------------------------------------
+  // STATE 2: ATTENTION DEGRADED (Yellow LED ON) - 1.2s
+  // -------------------------------------------------------------
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("DRIVER STATE:");
+  lcd.setCursor(0, 1);
+  lcd.print("DEGRADED");
 
-      digitalWrite(PIN_GREEN, LOW);
-      digitalWrite(PIN_YELLOW, HIGH);
-      digitalWrite(PIN_RED, LOW);
-      digitalWrite(PIN_BUZZER, LOW);
-      digitalWrite(PIN_MOTOR, LOW);
-      digitalWrite(PIN_RELAY, LOW);
-    }
-    else if (state.indexOf("DROWSY") >= 0) {
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("DRIVER STATE:");
-      lcd.setCursor(0, 1);
-      lcd.print("DROWSY");
+  // Yellow ON (Pin 7 & Pin 9)
+  digitalWrite(6, LOW);  digitalWrite(8, LOW);
+  digitalWrite(7, HIGH); digitalWrite(9, HIGH);
+  digitalWrite(10, LOW); digitalWrite(12, LOW);
+  delay(1200);
 
-      digitalWrite(PIN_GREEN, LOW);
-      digitalWrite(PIN_YELLOW, LOW);
-      digitalWrite(PIN_RED, HIGH);
-      digitalWrite(PIN_BUZZER, HIGH);
-      digitalWrite(PIN_MOTOR, HIGH);   // Haptic steering vibrator ON
-      digitalWrite(PIN_RELAY, LOW);
-    }
-    else if (state.indexOf("DISTRACTED") >= 0) {
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("DRIVER STATE:");
-      lcd.setCursor(0, 1);
-      lcd.print("DISTRACTED");
+  // -------------------------------------------------------------
+  // STATE 3: DROWSY WARNING (Red LED ON) - 1.2s
+  // -------------------------------------------------------------
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("DRIVER STATE:");
+  lcd.setCursor(0, 1);
+  lcd.print("DROWSY!");
 
-      digitalWrite(PIN_GREEN, LOW);
-      digitalWrite(PIN_YELLOW, LOW);
-      digitalWrite(PIN_RED, HIGH);
-      digitalWrite(PIN_BUZZER, HIGH);
-      digitalWrite(PIN_MOTOR, HIGH);   // Steering vibrator ON
-      digitalWrite(PIN_RELAY, LOW);
-    }
-    else if (state.indexOf("ALERT") >= 0 || state.indexOf("HIGH_RISK") >= 0) {
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("DRIVER STATE:");
-      lcd.setCursor(0, 1);
-      lcd.print("CRITICAL ALERT!");
+  // Red ON (Pin 10 & Pin 12)
+  digitalWrite(6, LOW);  digitalWrite(8, LOW);
+  digitalWrite(7, LOW);  digitalWrite(9, LOW);
+  digitalWrite(10, HIGH); digitalWrite(12, HIGH);
+  delay(1200);
 
-      digitalWrite(PIN_GREEN, LOW);
-      digitalWrite(PIN_YELLOW, LOW);
-      digitalWrite(PIN_RED, HIGH);
-      digitalWrite(PIN_BUZZER, HIGH);
-      digitalWrite(PIN_MOTOR, HIGH);   // Continuous max vibration
-      digitalWrite(PIN_RELAY, HIGH);  // Vehicle hazard lights ON
-    }
-  }
+  // -------------------------------------------------------------
+  // STATE 4: CRITICAL ALERT (Red LED ON) - 1.2s
+  // -------------------------------------------------------------
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("DRIVER STATE:");
+  lcd.setCursor(0, 1);
+  lcd.print("CRITICAL ALERT!");
+
+  digitalWrite(6, LOW);  digitalWrite(8, LOW);
+  digitalWrite(7, LOW);  digitalWrite(9, LOW);
+  digitalWrite(10, HIGH); digitalWrite(12, HIGH);
+  delay(1200);
 }
