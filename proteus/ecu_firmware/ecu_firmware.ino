@@ -47,6 +47,9 @@ void loop() {
   if (Serial.available() > 0) {
     String state = Serial.readStringUntil('
 ');
+    state.replace("", "");
+    state.replace("
+", "");
     state.trim();
 
     if (state.length() == 0) return;
